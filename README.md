@@ -23,8 +23,6 @@
 5. [Inference Model Prediction](#inference-model-prediction)
 6. [Conclusion](#conclusion)
 7. [Additional Resources](#additional-resources)
-8. [Entire code to Test](#entire-code-to-test)
-
 
 ## Introduction
 
@@ -827,6 +825,7 @@ In this project, we demonstrated how to perform image colorization using TensorF
 
 - **Checkpoints**: The checkpoints after 1000 epochs are available in the checkpoint folder.
 - **Trained Model**: The model has been uploaded in the model folder.
+- **code**: The entire code is uploaded 'image_colorization_code.ipynb'
 - **Usage**: Feel free to utilize these resources to enhance your projects or further your understanding.
 
 ---
