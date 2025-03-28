@@ -39,10 +39,6 @@ Example of how the model will work.
 
 The model takes a grayscale image (3 channels) as input and outputs a full-color RGB image (3 channels):
 
-![Image Sample](images/image.png)
-
-
-
 ## Problem Statement
 
 This project aims to develop a deep learning GAN (Generative Adversarial Network) model to convert black-and-white images into colored images.  
