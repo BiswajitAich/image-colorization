@@ -206,6 +206,7 @@ Model: "Discriminator"
 | flatten_1 (Flatten)                  | (None, 16384)               |               0 |
 | dropout_1 (Dropout)                  | (None, 16384)               |               0 |
 | dense_1 (Dense)                      | (None, 1)                   |          16,385 |
+
 - **Total params**: 536,833 (2.05 MB)
 - **Trainable params**: 535,809 (2.04 MB)
 - **Non-trainable params**: 1,024 (4.00 KB)
@@ -262,12 +263,14 @@ def generator(input_shape=(32, 32, 1)):
 You can try the above architecture(It will give good results) but I tried a bit different, I added skip connections inspired by the [U-Net](https://paperswithcode.com/method/u-net) architecture.
 
 <i>Below is the Generator I used:<i>
+
 ```python
-def generator(input_shape=(64, 64, 1)):
+def generator(input_shape=(64, 64, 3)):
     input_image = tf.keras.layers.Input(shape=input_shape, name='input_image')
 
     down1 = tf.keras.layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same')(input_image)
-    act1 = tf.keras.layers.LeakyReLU(alpha=0.2)(down1)
+    bn1 = tf.keras.layers.BatchNormalization()(down1)
+    act1 = tf.keras.layers.LeakyReLU(alpha=0.2)(bn1)
 
     down2 = tf.keras.layers.Conv2D(128, (3, 3), strides=(2, 2), padding='same')(act1)
     bn2 = tf.keras.layers.BatchNormalization()(down2)
@@ -277,24 +280,34 @@ def generator(input_shape=(64, 64, 1)):
     bn3 = tf.keras.layers.BatchNormalization()(down3)
     act3 = tf.keras.layers.LeakyReLU(alpha=0.2)(bn3)
 
-    up1 = tf.keras.layers.Conv2DTranspose(256, (3, 3), strides=(2, 2), padding='same')(act3)
+    down4 = tf.keras.layers.Conv2D(256, (3, 3), strides=(2, 2), padding='same')(act3)
+    bn4 = tf.keras.layers.BatchNormalization()(down4)
+    act4 = tf.keras.layers.LeakyReLU(alpha=0.2)(bn4)
+
+    up = tf.keras.layers.Conv2DTranspose(256, (3, 3), strides=(2, 2), padding='same')(act4)
+    bn_up = tf.keras.layers.BatchNormalization()(up)
+    drop = tf.keras.layers.Dropout(0.2)(bn_up)
+    relu_up = tf.keras.layers.ReLU()(drop)
+    skip = tf.keras.layers.Concatenate()([relu_up, act3])
+
+    up1 = tf.keras.layers.Conv2DTranspose(256, (3, 3), strides=(2, 2), padding='same')(skip)
     bn_up1 = tf.keras.layers.BatchNormalization()(up1)
-    relu_up1 = tf.keras.layers.ReLU()(bn_up1)
-    drop1 = tf.keras.layers.Dropout(0.2)(relu_up1)
-    skip1 = tf.keras.layers.Concatenate()([drop1, act2])
+    drop1 = tf.keras.layers.Dropout(0.2)(bn_up1)
+    relu_up1 = tf.keras.layers.ReLU()(drop1)
+    skip1 = tf.keras.layers.Concatenate()([relu_up1, act2])
 
     up2 = tf.keras.layers.Conv2DTranspose(128, (3, 3), strides=(2, 2), padding='same')(skip1)
     bn_up2 = tf.keras.layers.BatchNormalization()(up2)
-    relu_up2 = tf.keras.layers.ReLU()(bn_up2)
-    drop2 = tf.keras.layers.Dropout(0.2)(relu_up2)
-    skip2 = tf.keras.layers.Concatenate()([drop2, act1])
+    drop2 = tf.keras.layers.Dropout(0.2)(bn_up2)
+    relu_up2 = tf.keras.layers.ReLU()(drop2)
+    skip2 = tf.keras.layers.Concatenate()([relu_up2, act1])
 
     up3 = tf.keras.layers.Conv2DTranspose(64, (3, 3), strides=(2, 2), padding='same')(skip2)
     bn_up3 = tf.keras.layers.BatchNormalization()(up3)
-    relu_up3 = tf.keras.layers.ReLU()(bn_up3)
-    drop3 = tf.keras.layers.Dropout(0.2)(relu_up3)
+    drop3 = tf.keras.layers.Dropout(0.2)(bn_up3)
+    relu_up3 = tf.keras.layers.ReLU()(drop3)
 
-    output = tf.keras.layers.Conv2D(3, (3, 3), activation='tanh', padding='same')(drop3)
+    output = tf.keras.layers.Conv2D(3, (3, 3), activation='tanh', padding='same')(relu_up3)
 
     model = tf.keras.Model(inputs=input_image, outputs=output, name='Generator')
     return model
@@ -309,46 +322,58 @@ Model: "Generator"
 
 | Layer (type)              | Output Shape           |        Param # | Connected to           |
 | ------------------------- | ---------------------- | -------------- | ---------------------- |
-| input_image (InputLayer)  | (None, 64, 64, 1)      |              0 | -                      |
-| conv2d_12 (Conv2D)        | (None, 32, 32, 64)     |            640 | input_image[0][0]      |
-| leaky_re_lu_11            | (None, 32, 32, 64)     |              0 | conv2d_12[0][0]        |
-| (LeakyReLU)               |                        |                |                        |
-| conv2d_13 (Conv2D)        | (None, 16, 16, 128)    |         73,856 | leaky_re_lu_11[0][0]   |
-| batch_normalization_11    | (None, 16, 16, 128)    |            512 | conv2d_13[0][0]        |
+| input_image (InputLayer)  | (None, 64, 64, 3)      |              0 | -                      |
+| conv2d_4 (Conv2D)         | (None, 32, 32, 64)     |          1,792 | input_image[0][0]      |
+| batch_normalization_3     | (None, 32, 32, 64)     |            256 | conv2d_4[0][0]         |
 | (BatchNormalization)      |                        |                |                        |
-| leaky_re_lu_12            | (None, 16, 16, 128)    |              0 | batch_normalization_1… |
-| (LeakyReLU)               |                        |                |                        |
-| conv2d_14 (Conv2D)        | (None, 8, 8, 256)      |        295,168 | leaky_re_lu_12[0][0]   |
-| batch_normalization_12    | (None, 8, 8, 256)      |          1,024 | conv2d_14[0][0]        |
+| leaky_re_lu_4 (LeakyReLU) | (None, 32, 32, 64)     |              0 | batch_normalization_3… |
+| conv2d_5 (Conv2D)         | (None, 16, 16, 128)    |         73,856 | leaky_re_lu_4[0][0]    |
+| batch_normalization_4     | (None, 16, 16, 128)    |            512 | conv2d_5[0][0]         |
 | (BatchNormalization)      |                        |                |                        |
-| leaky_re_lu_13            | (None, 8, 8, 256)      |              0 | batch_normalization_1… |
-| (LeakyReLU)               |                        |                |                        |
-| conv2d_transpose_3        | (None, 16, 16, 256)    |        590,080 | leaky_re_lu_13[0][0]   |
+| leaky_re_lu_5 (LeakyReLU) | (None, 16, 16, 128)    |              0 | batch_normalization_4… |
+| conv2d_6 (Conv2D)         | (None, 8, 8, 256)      |        295,168 | leaky_re_lu_5[0][0]    |
+| batch_normalization_5     | (None, 8, 8, 256)      |          1,024 | conv2d_6[0][0]         |
+| (BatchNormalization)      |                        |                |                        |
+| leaky_re_lu_6 (LeakyReLU) | (None, 8, 8, 256)      |              0 | batch_normalization_5… |
+| conv2d_7 (Conv2D)         | (None, 4, 4, 256)      |        590,080 | leaky_re_lu_6[0][0]    |
+| batch_normalization_6     | (None, 4, 4, 256)      |          1,024 | conv2d_7[0][0]         |
+| (BatchNormalization)      |                        |                |                        |
+| leaky_re_lu_7 (LeakyReLU) | (None, 4, 4, 256)      |              0 | batch_normalization_6… |
+| conv2d_transpose          | (None, 8, 8, 256)      |        590,080 | leaky_re_lu_7[0][0]    |
 | (Conv2DTranspose)         |                        |                |                        |
-| batch_normalization_13    | (None, 16, 16, 256)    |          1,024 | conv2d_transpose_3[0]… |
+| batch_normalization_7     | (None, 8, 8, 256)      |          1,024 | conv2d_transpose[0][0] |
 | (BatchNormalization)      |                        |                |                        |
-| re_lu_3 (ReLU)            | (None, 16, 16, 256)    |              0 | batch_normalization_1… |
-| dropout_5 (Dropout)       | (None, 16, 16, 256)    |              0 | re_lu_3[0][0]          |
-| concatenate_2             | (None, 16, 16, 384)    |              0 | dropout_5[0][0],       |
-| (Concatenate)             |                        |                | leaky_re_lu_12[0][0]   |
-| conv2d_transpose_4        | (None, 32, 32, 128)    |        442,496 | concatenate_2[0][0]    |
+| dropout_1 (Dropout)       | (None, 8, 8, 256)      |              0 | batch_normalization_7… |
+| re_lu (ReLU)              | (None, 8, 8, 256)      |              0 | dropout_1[0][0]        |
+| concatenate (Concatenate) | (None, 8, 8, 512)      |              0 | re_lu[0][0],           |
+|                           |                        |                | leaky_re_lu_6[0][0]    |
+| conv2d_transpose_1        | (None, 16, 16, 256)    |      1,179,904 | concatenate[0][0]      |
 | (Conv2DTranspose)         |                        |                |                        |
-| batch_normalization_14    | (None, 32, 32, 128)    |            512 | conv2d_transpose_4[0]… |
+| batch_normalization_8     | (None, 16, 16, 256)    |          1,024 | conv2d_transpose_1[0]… |
 | (BatchNormalization)      |                        |                |                        |
-| re_lu_4 (ReLU)            | (None, 32, 32, 128)    |              0 | batch_normalization_1… |
-| dropout_6 (Dropout)       | (None, 32, 32, 128)    |              0 | re_lu_4[0][0]          |
-| concatenate_3             | (None, 32, 32, 192)    |              0 | dropout_6[0][0],       |
-| (Concatenate)             |                        |                | leaky_re_lu_11[0][0]   |
-| conv2d_transpose_5        | (None, 64, 64, 64)     |        110,656 | concatenate_3[0][0]    |
+| dropout_2 (Dropout)       | (None, 16, 16, 256)    |              0 | batch_normalization_8… |
+| re_lu_1 (ReLU)            | (None, 16, 16, 256)    |              0 | dropout_2[0][0]        |
+| concatenate_1             | (None, 16, 16, 384)    |              0 | re_lu_1[0][0],         |
+| (Concatenate)             |                        |                | leaky_re_lu_5[0][0]    |
+| conv2d_transpose_2        | (None, 32, 32, 128)    |        442,496 | concatenate_1[0][0]    |
 | (Conv2DTranspose)         |                        |                |                        |
-| batch_normalization_15    | (None, 64, 64, 64)     |            256 | conv2d_transpose_5[0]… |
+| batch_normalization_9     | (None, 32, 32, 128)    |            512 | conv2d_transpose_2[0]… |
 | (BatchNormalization)      |                        |                |                        |
-| re_lu_5 (ReLU)            | (None, 64, 64, 64)     |              0 | batch_normalization_1… |
-| dropout_7 (Dropout)       | (None, 64, 64, 64)     |              0 | re_lu_5[0][0]          |
-| conv2d_15 (Conv2D)        | (None, 64, 64, 3)      |          1,731 | dropout_7[0][0]        |
-- **Total params**: 1,517,955 (5.79 MB)
-- **Trainable params**: 1,516,291 (5.78 MB)
-- **Non-trainable params**: 1,664 (6.50 KB)
+| dropout_3 (Dropout)       | (None, 32, 32, 128)    |              0 | batch_normalization_9… |
+| re_lu_2 (ReLU)            | (None, 32, 32, 128)    |              0 | dropout_3[0][0]        |
+| concatenate_2             | (None, 32, 32, 192)    |              0 | re_lu_2[0][0],         |
+| (Concatenate)             |                        |                | leaky_re_lu_4[0][0]    |
+| conv2d_transpose_3        | (None, 64, 64, 64)     |        110,656 | concatenate_2[0][0]    |
+| (Conv2DTranspose)         |                        |                |                        |
+| batch_normalization_10    | (None, 64, 64, 64)     |            256 | conv2d_transpose_3[0]… |
+| (BatchNormalization)      |                        |                |                        |
+| dropout_4 (Dropout)       | (None, 64, 64, 64)     |              0 | batch_normalization_1… |
+| re_lu_3 (ReLU)            | (None, 64, 64, 64)     |              0 | dropout_4[0][0]        |
+| conv2d_8 (Conv2D)         | (None, 64, 64, 3)      |          1,731 | re_lu_3[0][0]          |
+
+- **Total params**: 3,291,395 (12.56 MB)
+- **Trainable params**: 3,288,579 (12.54 MB)
+- **Non-trainable params**: 2,816 (11.00 KB)
 
 ```python
 plot_model(g_model, show_shapes=True, show_layer_names=True)
@@ -623,7 +648,7 @@ def define_gan(g_model, d_model, shape):
 
     model.compile(
         loss=[total_loss, 'binary_crossentropy'],
-        loss_weights=[100, 1],
+        loss_weights=[100, 1], # Change the parameters according to the image the model generating
         optimizer=optimizer
     )
 
@@ -726,10 +751,6 @@ When starting after 10 epoches the predicted image look like:
 
 ![10th epoch predicted image](images/image5.png)
 
-And after 1000 epochs the predicted image looks like:
-
-![1000th epoch predicted image](images/image6.png)
-
 ## Inference Model Prediction
 
 Recreate the model and restore the checkpoint then colorize the image using that.
@@ -776,10 +797,8 @@ Lets do the prediction:
 ```python
 checkpoint_dir = './training_checkpoints'
 generator_infer = load_checkpoint(checkpoint_dir)
-test_bw_images = train_bw[:10]
+test_bw_images = train_bw[50:60]
 colorized_images = colorize_images(generator_infer, test_bw_images)
-
-view_image(colorized_images, train_bw[:10], num_images=10)
 ```
 
 ![Predicted images](images/image7.png)
@@ -823,11 +842,16 @@ In this project, we demonstrated how to perform image colorization using TensorF
 
 ## Additional Resources
 
-- **Checkpoints**: The checkpoints after 1000 epochs are available in the checkpoint folder.
+- **Checkpoints**: The checkpoints after 500 epochs are available in the checkpoint folder.
 - **Trained Model**: The model has been uploaded in the model folder.
 - **code**: The entire code is uploaded 'image_colorization_code.ipynb'
 - **Usage**: Feel free to utilize these resources to enhance your projects or further your understanding.
 
 ---
+
+# **📜 License**
+This project is open-source under the MIT License. Feel free to modify and contribute! 🚀
+
+Would you like help with deploying the TensorFlow.js model into a simple web app? 😃</br>
 **Thank you for your time and interest!**
 <sub>- BISWAJIT AICH, 2025</sub>
