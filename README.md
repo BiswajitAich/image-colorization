@@ -851,7 +851,7 @@ In this project, we demonstrated how to perform image colorization using TensorF
 
 # **📜 License**
 This project is open-source under the MIT License. Feel free to modify and contribute! 🚀
-
-Would you like help with deploying the TensorFlow.js model into a simple web app? 😃</br>
-**Thank you for your time and interest!**
+[note: The model is only trained on 10k images so it can only do colorization on seen data, for unseen data it don't work well for that the model need to train on large amount of data!]
+</br>
+**Thank you for your time and interest! 🙏🏻**
 <sub>- BISWAJIT AICH, 2025</sub>
